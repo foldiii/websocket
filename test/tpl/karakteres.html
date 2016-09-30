@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<head>
+<title>Webget próba</title>
+<meta charset="UTF-8">
+<script src="/files/ws.js"></script>
+<link rel="stylesheet" type="text/css" href="/files/karakteres.css">
+</head>
+<body>
+<div class=keretes>
+<script>
+for (var k=101;k<125;k++){
+   for (var l=101;l<181;l++){
+      document.write("<span class=sor id=sor"+k+l+">"+"."+"</span>");
+   }
+   document.write("</br>\n");
+}
+</script>
+</div>
+<table><tr><td>
+<div>
+<pre>
+Color attributes are specified by TWO hex digits
+-- the first corresponds to the background;
+the second the foreground. 
+Each digit can be any of the below values.
+0 = Black       8 = Gray
+1 = Blue        9 = Light Blue
+2 = Green       A = Light Green
+3 = Aqua        B = Light Aqua
+4 = Red         C = Light Red
+5 = Purple      D = Light Purple
+6 = Yellow      E = Light Yellow
+7 = White       F = Bright White
+</pre>
+</div>
+</td><td>
+<div>
+<table class="wikitable" style="border-style: none" border="1" cellpadding="5">
+<tbody><tr style="color:white;">
+<td style="background:#000;">0 — black</td>
+<td style="background:#555;">8 — dark gray</td>
+</tr>
+<tr style="color:white;">
+<td style="background:#00a;">1 — low blue</td>
+<td style="background:#55f;">9 — high blue</td>
+</tr>
+<tr>
+<td style="color:white; background:#0a0;">2 — low green</td>
+<td style="color:black; background:#5f5;">10 — high green</td>
+</tr>
+<tr>
+<td style="color:white; background:#0aa;">3 — low cyan</td>
+<td style="color:black; background:#5ff;">11 — high cyan</td>
+</tr>
+<tr>
+<td style="color:white; background:#a00;">4 — low red</td>
+<td style="color:black; background:#f55;">12 — high red</td>
+</tr>
+<tr>
+<td style="color:white; background:#a0a;">5 — low magenta</td>
+<td style="color:black; background:#f5f;">13 — high magenta</td>
+</tr>
+<tr>
+<td style="color:white; background:#a50;">6 — brown</td>
+<td style="color:black; background:#ff5;">14 — yellow</td>
+</tr>
+<tr style="color:black;">
+<td style="background:#aaa;">7 — light gray</td>
+<td style="background:#fff;">15 — white</td>
+</tr>
+</tbody></table>
+</div>
+</td></tr></table>
+</body>

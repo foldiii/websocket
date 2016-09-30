@@ -1,0 +1,9 @@
+hbhttpd.hbc
+hbssl.hbc
+-ohweb
+-lhbtip
+-w3 -es2 
+-b
+hweb.prg
+../core.prg
+../wbs.prg

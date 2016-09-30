@@ -1,0 +1,32 @@
+{{extend _karbantart}}
+<input type=hidden name=program value=utorzs>
+<fieldset ><legend >&nbsp;Egy űgyfél adatai&nbsp;</legend>
+<table>
+<tr>
+<td><label for=rnev class=mnev>Rövid név:&nbsp;</label></td>
+<td><input class=mezo type=text id=rnev name=Rnev size=80 maxlength=80 Value="" ></td>
+</tr><tr>
+<td><label for=vnev class=mnev>Vezetéknév:&nbsp;</label></td>
+<td><input class=mezo type=text id=vnev name=Vnev size=40 maxlength=80 Value="" ></td>
+</tr><tr>
+<td><label for=knev class=mnev>Keresztnév:&nbsp;</label></td>
+<td><input class=mezo type=text id=knev name=Knev size=40 maxlength=80 Value="" ></td>
+</tr><tr>
+<td><label for=iszam class=mnev>Iranyítószám:&nbsp;</label></td>
+<td><input class=mezo type=text id=iszam name=Iszam size=4 maxlength=4 Value="" ></td>
+</tr><tr>
+<td><label for=telep class=mnev>Település:&nbsp;</label></td>
+<td><input class=mezo type=text id=telep name=Telep size=40 maxlength=80 Value="" ></td>
+</tr><tr>
+<td><label for=cim class=mnev>Cím:&nbsp;</label></td>
+<td><input class=mezo type=text id=cim name=Cim size=40 maxlength=80 Value="" ></td>
+</tr>
+</table>
+</fieldset>
+<hr>
+<table width=50%><tr>
+<td width=180px><button onclick="location.reload(true);" >Lap frissítése</button> 
+</td><td>Dátum:<span id=date>{{= date}}</span>  Ido:<span id=time>{{= time}}</span>
+</td></tr></table>
+
+
