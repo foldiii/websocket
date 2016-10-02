@@ -22,14 +22,14 @@ openssl x509 -in certificate.pem -text -noout
 #define CRLF (chr(13)+chr(10))
 #define FILE_STOP ".hweb.stop"
 
-#define wbs Server["HTTP_EXTRAPROTOCOL"]
+// #define wbs Server["HTTP_EXTRAPROTOCOL"]
 
 
 REQUEST __HBEXTERN__HBSSL__
 REQUEST DBFCDX
 REQUEST HB_GT_CGI_DEFAULT
 
-MEMVAR server, get, post, cookie, session
+MEMVAR server, get, post, cookie, session, wbs
 PROCEDURE Main()
    LOCAL oServer
 #ifdef TRACE
@@ -104,7 +104,8 @@ PROCEDURE Main()
          "PrivateKeyFilename"  => "private.key", ;
          "CertificateFilename" => "certificate.crt", ;
          "SSL"                 => .F., ;
-         "ExtraProtocol"       => {|cRequest| WebProtocol():New(cRequest) }, ;
+         "CustomProcessor"     => {|cRequest,hSocket,hSSL| websocketcall(cRequest,hSocket,hSSL) }, ;
+         "SocketReuse"         => .T.,;
          "Mount"          => { ;
          "/hello"            => {|| UWrite( "Hello!" ) }, ;
          "/info"             => {|| UProcInfo() }, ;
@@ -143,7 +144,14 @@ PROCEDURE Main()
 #endif
    ?
 RETURN
-
+function websocketcall(cRequest)
+Local rc:=NIL
+   public wbs
+   wbs:=WebProtocol():New(cRequest) 
+   if wbs:Status()#0
+      rc:=""
+   endif
+return(rc)
 function kiirat(nev,adat,szint)
 local soreleje:="",k,sor
   if szint==NIL
@@ -219,6 +227,7 @@ local sor,Hcommand
 //          par:=wbs:WebRead(2)
       par:=wbs:WebRead()
       if wbs:Error()
+        ?"Error miatt kilép"
          exit
       endif
       ciklus++
@@ -358,3 +367,12 @@ local rc,fut:=.y.
       enddo
    endif
 return("")
+function HB_ISEVALINFO()
+return(.y.)
+procedure prockiir()
+local n
+   n:=1
+   do while ! empty(procname(n))
+      ?"===============",procname(n),procline(n++)
+   enddo
+return

@@ -35,13 +35,15 @@ CREATE CLASS UHttpd MODULE FRIENDLY
    EXPORTED:
    METHOD Run( hConfig )
    METHOD Stop()
-   METHOD Write(cBuf)
-   METHOD Read(cRequest,nReqLen,nTimeout)
 
-   VAR cError INIT ""
-   VAR hConfig
+   METHOD Read( hSocket, hSSL, /* @ */ cRequest, nReqLen, nTimeout )
+   METHOD Write( hSocket, hSSL, cBuffer )
+   METHOD Config()
    
+   VAR cError INIT ""
+
    HIDDEN:
+   VAR hConfig
 
    VAR aFirewallFilter
 
@@ -65,17 +67,56 @@ ENDCLASS
 FUNCTION UHttpdNew()
    RETURN UHttpd()
 
-METHOD Write(cBuf) CLASS UHttpd
-    LOCAL nLen, nErr
-    
-    DO WHILE ! HB_ISNULL( cBuf ) .AND. ! ::lStop
-      IF ::lHasSSL .AND. ::hConfig[ "SSL" ]
-         nLen := MY_SSL_WRITE( ::hConfig, server[ "SSL_SERVER_HSSL" ], server[ "HSOCKET" ], cBuf, 1000, @nErr )
-      ELSE
-         nLen := hb_socketSend( server[ "HSOCKET" ], cBuf,,, 1000 )
-         IF nLen < 0
-               nErr := hb_socketGetError()
+METHOD Config()
+RETURN( ::hConfig )
+METHOD Read( hSocket, hSSL, /* @ */ cRequest, nReqLen, nTimeout ) CLASS UHttpd
+
+   LOCAL nTime := hb_MilliSeconds() + hb_defaultValue( nTimeout, 1 ) * 1000
+   LOCAL cBuf, nLen := 1, nErr
+
+   hb_default( @nReqLen, 0 )  // Zero will read till the first double-CRLF
+   cRequest := ""
+   DO WHILE iif( nReqLen == 0, !( CR_LF + CR_LF $ cRequest ), hb_BLen( cRequest ) < nReqLen )
+      cBuf:=space(iif( nReqLen == 0, 4096, nReqLen - hb_BLen( cRequest ) ) )
+      IF hSSL != NIL
+         nLen := MY_SSL_READ( ::hConfig, hSSL, hSocket, @cBuf, 1000, @nErr )
+      ELSEIF ( nLen := hb_socketRecv( hSocket, @cBuf,,, 1000 ) ) < 0
+         nErr := hb_socketGetError()
+      ENDIF
+
+      DO CASE
+      CASE nLen > 0
+         cRequest += hb_BLeft( cBuf, nLen )
+      CASE nLen == 0
+         /* connection closed */
+         nLen:=-1
+         EXIT
+      OTHERWISE
+         /* nLen == -1  socket error */
+         IF nErr == HB_SOCKET_ERR_TIMEOUT
+            IF hb_MilliSeconds() > nTime .OR. ::lStop
+               Eval( ::hConfig[ "Trace" ], "receive timeout", hSocket )
+               nLen:=0
+               EXIT
+            ENDIF
+         ELSE
+            Eval( ::hConfig[ "Trace" ], "receive error:", nErr, hb_socketErrorString( nErr ) )
+            nLen:=-1
+            EXIT
          ENDIF
+      ENDCASE
+   ENDDO
+   RETURN nLen
+
+METHOD Write( hSocket, hSSL, cBuffer ) CLASS UHttpd
+
+   LOCAL nLen, nErr
+
+   DO WHILE ! HB_ISNULL( cBuffer ) .AND. ! ::lStop
+      IF hSSL != NIL
+         nLen := MY_SSL_WRITE( ::hConfig, hSSL, hSocket, cBuffer, 1000, @nErr )
+      ELSEIF ( nLen := hb_socketSend( hSocket, cBuffer,,, 1000 ) ) < 0
+         nErr := hb_socketGetError()
       ENDIF
 
       DO CASE
@@ -83,61 +124,11 @@ METHOD Write(cBuf) CLASS UHttpd
          Eval( ::hConfig[ "Trace" ], "send error:", nErr, hb_socketErrorString( nErr ) )
          EXIT
       CASE nLen > 0
-         cBuf := hb_BSubStr( cBuf, nLen + 1 )
-      ENDCASE
-    ENDDO
-RETURN(nLen)
-METHOD Read(cRequest,nReqLen,nTimeout) CLASS UHttpd
-   
-   LOCAL nLen, nTime, nErr, cBuf, nRead, nRC
-   
-   hb_default(@nTimeout,0)
-   IF nTimeout > 0
-      nTime := hb_MilliSeconds() + 1000 * nTimeout
-   ELSE
-      nTime := hb_MilliSeconds() + 1000      
-   ENDIF
-   cRequest:=""
-   nRead:=0
-   nRC:=0
-   cBuf := Space( 4096 )
-   DO WHILE nRead < nReqLen
-      IF ::lHasSSL .AND. ::hConfig[ "SSL" ]
-         nLen := MY_SSL_READ( ::hConfig, ::hSSL, server[ "HSOCKET" ], @cBuf, nTimeout, @nErr )
-      ELSE
-         IF ( nLen := hb_socketRecv( server[ "HSOCKET" ], @cBuf,nReqLen-nRead,, nTimeout ) ) < 0
-            nErr := hb_socketGetError()
-         ENDIF
-      ENDIF
-
-      DO CASE
-      CASE nLen > 0
-         cRequest += hb_BLeft( cBuf, nLen )
-         nRead=hb_BLen( cRequest )
-         nRC:=nRead
-      CASE nLen == 0
-         /* connection closed */
-         nRC:= -1
-         EXIT
-      OTHERWISE
-         /* nLen == -1  socket error */
-         IF nErr == HB_SOCKET_ERR_TIMEOUT
-            IF  hb_MilliSeconds() > nTime  .OR. ::lStop
-               Eval( ::hConfig[ "Trace" ], "receive timeout", server[ "HSOCKET" ] )
-               if nTimeout > 0
-                  nRC:=0
-                  EXIT
-               endif
-            ENDIF
-         ELSE
-            Eval( ::hConfig[ "Trace" ], "receive error:", nErr, hb_socketErrorString( nErr ) )
-            nRC:= -1
-            EXIT
-         ENDIF
+         cBuffer := hb_BSubStr( cBuffer, nLen + 1 )
       ENDCASE
    ENDDO
 
-   RETURN(nRC)
+   RETURN nLen
 
 METHOD Run( hConfig ) CLASS UHttpd
 
@@ -159,7 +150,8 @@ METHOD Run( hConfig ) CLASS UHttpd
       "Mount"                => { => }, ;
       "PrivateKeyFilename"   => "", ;
       "CertificateFilename"  => "", ;
-      "ExtraProtocol"        => {|| NIL }, ;
+      "CustomProcessor"      => {|| NIL }, ;
+      "SocketReuse"          => .f., ;
       "FirewallFilter"       => "0.0.0.0/0" }
 
    FOR EACH xValue IN hConfig
@@ -213,7 +205,11 @@ METHOD Run( hConfig ) CLASS UHttpd
       ::cError := "Socket create error: " + hb_socketErrorString()
       RETURN .F.
    ENDIF
-   hb_socketsetreuseaddr(Self:hListen,.t.)
+
+   IF hb_HGetDef( ::hConfig, "SocketReuse", .F. )
+      hb_socketSetReuseAddr( ::hListen, .T. )
+   ENDIF
+
    IF ! hb_socketBind( ::hListen, { HB_SOCKET_AF_INET, ::hConfig[ "BindAddress" ], ::hConfig[ "Port" ] } )
       ::cError := "Bind error: " + hb_socketErrorString()
       hb_socketClose( ::hListen )
@@ -509,6 +505,8 @@ STATIC FUNCTION ProcessConnection( oServer )
    LOCAL hSocket, cRequest, aI, nLen, nErr, nTime, nReqLen, cBuf, aServer
    LOCAL hSSL
 
+   LOCAL lCustomProcessor := HB_ISEVALINFO( hb_HGetDef( oServer:hConfig, "CustomProcessor" ) )
+
    ErrorBlock( {| o | UErrorHandler( o, oServer ) } )
 
    PRIVATE server, get, post, cookie, session, httpd
@@ -526,7 +524,6 @@ STATIC FUNCTION ProcessConnection( oServer )
          because request handler script can ruin variable value */
       aServer := { => }
       aServer[ "HTTPS" ] := oServer:hConfig[ "SSL" ]
-      aServer[ "HSOCKET" ] := hSocket
       IF ! Empty( aI := hb_socketGetPeerName( hSocket ) )
          aServer[ "REMOTE_ADDR" ] := aI[ 2 ]
          aServer[ "REMOTE_HOST" ] := aServer[ "REMOTE_ADDR" ] // no reverse DNS
@@ -584,7 +581,6 @@ STATIC FUNCTION ProcessConnection( oServer )
          aServer[ "SSL_VERSION_LIBRARY" ] := OpenSSL_version( HB_OPENSSL_VERSION )
          aServer[ "SSL_SERVER_I_DN" ] := X509_name_oneline( X509_get_issuer_name( SSL_get_certificate( hSSL ) ) )
          aServer[ "SSL_SERVER_S_DN" ] := X509_name_oneline( X509_get_subject_name( SSL_get_certificate( hSSL ) ) )
-         aServer[ "SSL_SERVER_HSSL" ] :=  hSSL
       ENDIF
 
       /* loop for processing connection */
@@ -594,37 +590,7 @@ STATIC FUNCTION ProcessConnection( oServer )
       DO WHILE ! oServer:lStop
 
          /* receive query header */
-         nLen := 1
-         nTime := hb_MilliSeconds()
-         cBuf := Space( 4096 )
-         DO WHILE !( CR_LF + CR_LF $ cRequest )
-            IF oServer:lHasSSL .AND. oServer:hConfig[ "SSL" ]
-               nLen := MY_SSL_READ( oServer:hConfig, hSSL, hSocket, @cBuf, 1000, @nErr )
-            ELSE
-               IF ( nLen := hb_socketRecv( hSocket, @cBuf,,, 1000 ) ) < 0
-                  nErr := hb_socketGetError()
-               ENDIF
-            ENDIF
-
-            DO CASE
-            CASE nLen > 0
-               cRequest += hb_BLeft( cBuf, nLen )
-            CASE nLen == 0
-               /* connection closed */
-               EXIT
-            OTHERWISE
-               /* nLen == -1  socket error */
-               IF nErr == HB_SOCKET_ERR_TIMEOUT
-                  IF ( hb_MilliSeconds() - nTime ) > 1000 * 30 .OR. oServer:lStop
-                     Eval( oServer:hConfig[ "Trace" ], "receive timeout", hSocket )
-                     EXIT
-                  ENDIF
-               ELSE
-                  Eval( oServer:hConfig[ "Trace" ], "receive error:", nErr, hb_socketErrorString( nErr ) )
-                  EXIT
-               ENDIF
-            ENDCASE
-         ENDDO
+         nLen := oServer:Read( hSocket, hSSL, @cRequest,, 30 )
 
          IF nLen <= 0 .OR. oServer:lStop
             EXIT
@@ -644,6 +610,8 @@ STATIC FUNCTION ProcessConnection( oServer )
 
          Eval( oServer:hConfig[ "Trace" ], Left( cRequest, At( CR_LF + CR_LF, cRequest ) + 1 ) )
 
+         cBuf := NIL
+
          nReqLen := ParseRequestHeader( @cRequest )
          IF nReqLen == NIL
             USetStatusCode( 400 )
@@ -651,9 +619,12 @@ STATIC FUNCTION ProcessConnection( oServer )
          ELSE
 
             /* receive query body */
-            nLen:=oServer:Read(@cRequest,nReqLen,120)
-            
-            IF nLen < 0 .OR. oServer:lStop
+            nLen:=1
+            IF nReqLen>0
+                nLen := oServer:Read( hSocket, hSSL, @cRequest, nReqLen, 120 )
+            ENDIF
+
+            IF nLen <= 0 .OR. oServer:lStop
                EXIT
             ENDIF
 
@@ -679,20 +650,24 @@ STATIC FUNCTION ProcessConnection( oServer )
                ENDIF
 
                /* Do the job */
-               Server["HTTP_EXTRAPROTOCOL"]:=eval(oServer:hconfig[ "ExtraProtocol" ],Left( cRequest, nReqLen ))
+               IF lCustomProcessor
+                  cBuf := Eval( oServer:hConfig[ "CustomProcessor" ], { ;
+                     "cRequest" => hb_BLeft( cRequest, nReqLen ), ;
+                     "hSocket"  => hSocket, ;
+                     "hSSL"     => hSSL } )
+               ENDIF
                ProcessRequest( oServer )
+
                dbCloseAll()
             ENDIF
          ENDIF /* request header ok */
 
-         // Send response
-         IF Server["HTTP_EXTRAPROTOCOL"]!=NIL .and. Server["HTTP_EXTRAPROTOCOL"]:Status()#0
-            cBuf := Server["HTTP_EXTRAPROTOCOL"]:Response()
-         ELSE
+         // Send response (unless the custom processor formed one already)
+         IF cBuf == NIL
             cBuf := MakeResponse( oServer:hConfig )
          ENDIF
 
-         oServer:Write(cBuf)
+         oServer:Write( hSocket, hSSL, cBuf )
 
          IF oServer:lStop
             EXIT
@@ -748,7 +723,7 @@ STATIC PROCEDURE ProcessRequest( oServer )
          CASE HB_ISSTRING( xRet )
             UWrite( xRet )
          CASE HB_ISHASH( xRet )
-            UWrite( UParse( xRet,,oServer:hConfig ) )
+            UWrite( UParse( xRet,, oServer:hConfig ) )
          ENDCASE
       RECOVER
          USetStatusCode( 500 )
@@ -812,7 +787,6 @@ STATIC FUNCTION ParseRequestHeader( cRequest )
    server[ "HTTP_KEEP_ALIVE" ] := ""
    server[ "HTTP_REFERER" ] := ""
    server[ "HTTP_USER_AGENT" ] := ""
-   server[ "HTTP_WBSCONNECTION" ] := NIL
 
    FOR nI := 2 TO Len( aRequest )
       IF aRequest[ nI ] == ""

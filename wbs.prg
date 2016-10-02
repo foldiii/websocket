@@ -8,7 +8,7 @@ memvar server, httpd
 FUNCTION PageParse(cName, hPar)
    LOCAL rc
    hb_default(@hPar,hb_hash())
-   rc:=UParse(hPar,cName,httpd:hconfig)
+   rc:=UParse(hPar,cName,httpd:config())
 RETURN(rc)
 
 CREATE CLASS WebSocketError
@@ -34,11 +34,13 @@ CREATE CLASS WebSocket MODULE FRIENDLY
       VAR cErrorString
       VAR cFileName
       VAR CFileBody
+      VAR hSocket
+      VAR hSSL
       VAR nBlockType   // Az utoljára beolvasott blokk tipusa 
       METHOD KeyGen()
       METHOD CreateHead(nType,nLength,lLast,lMask)
    EXPORTED:
-      METHOD New(cRequest)
+      METHOD New(hPar)
       METHOD WriteRaw(cBuffer)
       METHOD WriteTextBlock(cBuffer)
       METHOD WriteBinBlock(cBuffer)
@@ -52,11 +54,14 @@ CREATE CLASS WebSocket MODULE FRIENDLY
       METHOD FileBody() INLINE (::cFileBody)
       METHOD Socket() INLINE (server[ "HSOCKET" ])
 ENDCLASS
-METHOD New(cRequest) CLASS WebSocket
+METHOD New(hPar) CLASS WebSocket
    LOCAL cResponse
    LOCAL poz,tipus,oPost,oPart,mezonev,hibakod
-   ::cRequest:=cRequest
+   
+   ::cRequest:=hPar["cRequest"]
    ::cErrorString:=""
+   ::hSocket:=hPar["hSocket"]
+   ::hSSL:=hPar["hSSL"]
    ::cWebsocketKey:=hb_hgetdef(server,"HTTP_SEC_WEBSOCKET_KEY","")
    if at("upgrade",lower(hb_hgetdef( server,"HTTP_CONNECTION","") ) )>0 ;
       .and.  lower(hb_hgetdef( server,"HTTP_UPGRADE","")) == "websocket" .and. ;
@@ -116,7 +121,7 @@ METHOD KeyGen() CLASS WebSocket
 return(rc)
 METHOD WriteRaw(cBuffer) CLASS WebSocket
    LOCAL rc
-   rc:=httpd:Write(cBuffer)
+   rc:=httpd:Write(::hSocket,::hSSL,cBuffer)
    ::nErrorCode:=rc
    if ::nErrorMode==1 .and. ::nErrorCode<0
       break(WebSocketError():New(::nErrorCode,"WebSocket írási hib!"))
@@ -132,7 +137,7 @@ METHOD WriteBinBlock(cBuffer) CLASS WebSocket
 return(rc)
 METHOD ReadRaw(nLength,cBuffer,nTimeout) CLASS WebSocket
    LOCAL rc
-   rc:=httpd:Read( @cBuffer,nLength,nTimeout)
+   rc:=httpd:Read(::hSocket,::hSSL,@cBuffer,nLength,nTimeout)
    ::nErrorCode:=rc
    if ::nErrorMode==1 .and. ::nErrorCode<0
       break(WebSocketError():New(::nErrorCode,"WebSocket olvasási hib!"))
@@ -198,7 +203,6 @@ METHOD ReadBlock(cBlock,nTimeout) CLASS WebSocket
          endif
          cBuffer:=space(nLength)
          rc:=::ReadRaw(nLength,@cBuffer)
-//          ?"ReadBlock beolvasva:",rc, "tipus:",::nBlockType
          if rc#nLength
             return(rc)
          endif
@@ -303,7 +307,7 @@ CLASS WebProtocol FROM WebSocket
       VAR   jsonformat INIT .y.  // .y. human format .n. compact
    EXPORTED:
       METHOD Write(oMessage)
-      METHOD New(cRequest)
+      METHOD New(hPar)
       METHOD PageWrite(cName,hPar)
       METHOD PageParse(cName,hPar)
       METHOD PutFields(hPar)
@@ -331,9 +335,9 @@ CLASS WebProtocol FROM WebSocket
       METHOD Inkeyon(cId)
       METHOD Inkeyoff(cId)
 ENDCLASS
-METHOD New(cRequest) CLASS WebProtocol
+METHOD New(hPar) CLASS WebProtocol
    ::nError:=0
-   ::Super:New(cRequest)
+   ::Super:New(hPar)
 return(Self)
 METHOD Webread(nTimeout,bTimeout) CLASS WebProtocol
    while .y.
