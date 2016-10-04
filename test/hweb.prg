@@ -93,7 +93,7 @@ PROCEDURE Main()
 
    oServer := UHttpdNew()
 //         "Idle"                => {| o | sessiontorol(o), iif( hb_FileExists( FILE_STOP ), ( FErase( FILE_STOP ), o:Stop() ), NIL ) }, ;
-
+   TraceLog( bTrace )
    IF ! oServer:Run( { ;
          "FirewallFilter"      => "", ;
          "LogAccess"           => bLogAccess,;
@@ -104,7 +104,7 @@ PROCEDURE Main()
          "PrivateKeyFilename"  => "private.key", ;
          "CertificateFilename" => "certificate.crt", ;
          "SSL"                 => .F., ;
-         "CustomProcessor"     => {|cRequest,hSocket,hSSL| websocketcall(cRequest,hSocket,hSSL) }, ;
+         "RequestFilter"       => {|oConnect, cRequest| websocketcall(oConnect,cRequest, bTrace) }, ;
          "SocketReuse"         => .T.,;
          "Mount"          => { ;
          "/hello"            => {|| UWrite( "Hello!" ) }, ;
@@ -144,10 +144,10 @@ PROCEDURE Main()
 #endif
    ?
 RETURN
-function websocketcall(cRequest)
+function websocketcall(oConnect, cRequest, bTrace)
 Local rc:=NIL
    public wbs
-   wbs:=WebProtocol():New(cRequest) 
+   wbs:=WebProtocol():New(oConnect, cRequest, bTrace) 
    if wbs:Status()#0
       rc:=""
    endif
@@ -197,14 +197,17 @@ static function konyvel(path)
 local par,ciklus:=0,k,muvelet,mpar,mnev,poz,kiirat
 local sor,Hcommand
    HB_SYMBOL_UNUSED(path)
-   ?"szal elindult:",path
+   ?"szal elindult:"
    // dbUseArea( [<lNewArea>], [<cDriver>], <cName>, [<xcAlias>],
    //            [<lShared>], [<lReadonly>]) --> NIL
    *altd()
-   if wbs==NIL .or. wbs:Status()==0
+   if __mvScope( "wbs" )#1
       RETURN  PageParse("konyvel")
+   else      
+       if wbs:Status()==0
+         RETURN  PageParse("konyvel")
+      endif
    endif
-   ?"websocket indul 1"
    dbUseArea( .T., , "ugyfel", "ugyfel", .T., .F. )
    ordSetFocus( "rnev" )
    dbgotop()
@@ -216,11 +219,10 @@ local sor,Hcommand
    kiirat:=.y.
    while .y.
       if kiirat
-         ?"indul 3:"
          wbs WEBSAY str(ciklus) TO ciklus
          for k:=1 to fcount()
             wbs WEBSAY alltrim(fieldget(k)) TO (lower(fieldname(k)))
-            ?lower(fieldname(k))+"=",alltrim(fieldget(k))
+//             ?lower(fieldname(k))+"=",alltrim(fieldget(k))
          next
          wbs WEBSAY "Rekord:"+str(ciklus) TO time
       endif
@@ -233,6 +235,7 @@ local sor,Hcommand
       ciklus++
       if wbs:Timeout()
          wbs WEBSAY "Ciklus:"+str(ciklus) TO time
+         kiirat:=.n.
       else
 //          altd()
          ?"valtype:",valtype(par)
