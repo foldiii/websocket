@@ -234,7 +234,8 @@ local sor,Hcommand
       endif
       ciklus++
       if wbs:Timeout()
-         wbs WEBSAY "Ciklus:"+str(ciklus) TO time
+         wbs WEBSAY Dtoc(date()) TO date
+         wbs WEBSAY time()+" Ciklus:"+str(ciklus) TO time
          kiirat:=.n.
       else
 //          altd()
