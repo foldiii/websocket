@@ -43,7 +43,8 @@ A websocket támogatás a hbhttpd webszerverre épül.
        A cBuffer text módu fejlécének elkézítése és kiírása a WriteRaw fügvénnyel
 
 *    WriteBinBlock( cBuffer )
-       A cBuffer bináris módu fejlécének elkézítése és kiírása a WriteRaw fügvénnyel
+       A cBuffer bináris módu fejlécének elkézítése és kiírása a WriteRaw fügvénnyel.
+       
        Még nem láttam böngészőt ami támogatta volna!!!
 
 *    ReadRaw( nLength,/* @ */ cBuffer, nTimeout )
