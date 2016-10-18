@@ -383,9 +383,9 @@ function hw_jssubmit(valasz,form)
                      var rawData = new ArrayBuffer();
                         rawData = e.target.result;
                         t={};
-                        t["adat"]=btoa(rawData);
-                        t["nev"]=this.filenev;
-                        t["meret"]=e.total;
+                        t["data"]=btoa(rawData);
+                        t["name"]=this.filenev;
+                        t["size"]=e.total;
                         t["id"]=this.fid;
                         valasz.fileok.push(t);
 //                         console.log("the File has been transferred.",this.filenev);

@@ -213,12 +213,12 @@ local sor,Hcommand
       endif
 //          par:=wbs:WebRead(2)
       par:=wbs:WebRead()
-      if wbs:Error()
+      if wbs:isError()
         ?"Error miatt kilép"
          exit
       endif
       ciklus++
-      if wbs:Timeout()
+      if wbs:isTimeout()
          wbs WEBSAY Dtoc(date()) TO date
          wbs WEBSAY time()+" Ciklus:"+str(ciklus) TO time
          kiirat:=.n.

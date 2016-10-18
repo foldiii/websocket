@@ -320,14 +320,12 @@ CLASS WebProtocol FROM WebSocket
    METHOD SetFocus( cId )
    METHOD SetSelection( cId, nStart, nEnd )
    METHOD InsertHTML( cId, cHtml )
-   METHOD OpenModal( cId )
-   METHOD Set( cSearch, cName, CValue )
-   METHOD SetStyle( cSearch, cName, CValue )
-   METHOD CloseModal( cId )
+   METHOD Set( cSearch, cName, cValue )
+   METHOD SetStyle( cSearch, cName, cValue )
    METHOD GetFields( nTimeout )
    METHOD WebRead( nTimeout, bTimeout )
-   METHOD Timeout()
-   METHOD Error()
+   METHOD isTimeout()
+   METHOD isError()
    METHOD isCommand()
    METHOD Command()
    METHOD Parameter()
@@ -344,7 +342,6 @@ CLASS WebProtocol FROM WebSocket
 ENDCLASS
 METHOD New( oConnect, cRequest, bTrace ) CLASS WebProtocol
 
-   ::nError := 0
    ::Super:New( oConnect, cRequest, bTrace )
 
    return( Self )
@@ -352,7 +349,7 @@ METHOD Webread( nTimeout, bTimeout ) CLASS WebProtocol
 
    WHILE .y.
       ::Respond = ::GetFields( nTimeout )
-      IF nTimeout # NIL .AND. bTimeout # NIL .AND. ::Timeout()
+      IF nTimeout # NIL .AND. bTimeout # NIL .AND. ::isTimeout()
          ::Respond := Eval( bTimeout )
          IF ValType( ::Respond ) == "H"
             EXIT
@@ -387,9 +384,9 @@ METHOD Write( oMessage ) CLASS WebProtocol
    ENDIF
 
    RETURN( rc )
-METHOD Timeout() CLASS WebProtocol
+METHOD isTimeout() CLASS WebProtocol
    RETURN ::Super:ErrorCode() == 0
-METHOD Error() CLASS WebProtocol
+METHOD isError() CLASS WebProtocol
    RETURN ::Super:ErrorCode() < 0
 METHOD PageWrite( cName, hPar ) CLASS WebProtocol
 
@@ -420,9 +417,9 @@ METHOD SetSelection( cId, nStart, nEnd ) CLASS WebProtocol
    RETURN( ::Write( { "select" => { "id" => cId, "start" => nStart, "end" => nEnd } } ) )
 METHOD InsertHTML( cId, cHtml ) CLASS WebProtocol
    RETURN( ::Write( { "insert" => { "id" => cId, "html" => cHtml } } ) )
-METHOD Set( cSearch, cName, CValue ) CLASS WebProtocol
+METHOD Set( cSearch, cName, cValue ) CLASS WebProtocol
    RETURN( ::Write( { "set" => { "search" => cSearch, "nev" => cName, "ertek" => cValue } } ) )
-METHOD SetStyle( cSearch, cName, CValue ) CLASS WebProtocol
+METHOD SetStyle( cSearch, cName, cValue ) CLASS WebProtocol
    RETURN( ::Write( { "setstyle" => { "search" => cSearch, "nev" => cName, "ertek" => cValue } } ) )
 METHOD Inkeyon( cId ) CLASS WebProtocol
 
@@ -446,16 +443,6 @@ METHOD Inkeyoff( cId ) CLASS WebProtocol
    ENDIF
 
    RETURN( ::Write( rc ) )
-METHOD OpenModal( cId ) CLASS WebProtocol
-
-   hb_default( @cId, "openModal" )
-
-   RETURN( ::Write( { "href" => "#" + cId } ) )
-METHOD CloseModal( cId ) CLASS WebProtocol
-
-   hb_default( @cId, "openModal" )
-
-   RETURN( ::Write( { "href" => "#" } ) )
 METHOD Redirect( cLink ) CLASS WebProtocol
    RETURN( ::Write( { "href" => cLink } ) )
 METHOD GetFields( nTimeout ) CLASS WebProtocol
