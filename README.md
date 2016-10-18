@@ -133,10 +133,10 @@ A websocket támogatás a hbhttpd webszerverre épül.
 
    * Files()
    Egy tömböt ad vissza ami minden feltöltött filehoz egy has tömöt tartalmaz amiben a következö adatok vannak:
-   -- name = a file neve
-   -- size = a file mérete
-   -- data = a file tartalma base64 kódolással
-   -- id   = a mező ID-je
+   * name = a file neve
+   * size = a file mérete
+   * data = a file tartalma base64 kódolással
+   * id   = a mező ID-je
 
    * isFields()
    Igazat ad vissza a van input mező.
