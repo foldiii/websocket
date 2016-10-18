@@ -61,12 +61,17 @@ A websocket támogatás a hbhttpd webszerverre épül.
    Létrehoz egy objektumot és befejezi a kapcsolatfelvételt.
 
    * Write( xMessage ) *
-   Az xMessage tömböt hb_jsonEncode parancsal átalakítja és elküldi a javascript prógramnak
+   Az xMessage tömböt hb_jsonEncode parancsal átalakítja és elküldi a javascript prógramnak.
+   Ha az xMessage karakteres változó akkor változtatás nélkűl elküldi.
    
    * PageWrite( cName, hPar )
-   A tpl könyvtárban lévő cName nevű template file-t feldolgozza és behelyettesíti a hPar nevű hash tömbben lévő értékeket.
+   A tpl könyvtárban lévő cName nevű template file-t feldolgozza és behelyettesíti a hPar nevű hash tömbben
+   lévő értékeket. Majd elküldi a Write fügvénnyel.
    
    * PageParse( cName, hPar )
+   A tpl könyvtárban lévő cName nevű template file-t feldolgozza és behelyettesíti a hPar nevű hash tömbben
+   lévő értékeket. Majd elküldi visszaadja az eredményt egy karakteres stringben.
+   
    * PutFields( hPar )
    * SetFocus( cId )
    * SetSelection( cId, nStart, nEnd )
