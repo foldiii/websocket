@@ -15,7 +15,7 @@ A websocket támogatás a hbhttpd webszerverre épül.
 ## Objektumok a wbs.prg fájlban:
 
 ### WebSocket
-   feladata a kapcsolat felvétele a böngészővel, és az átvitt adatok fejlécének kezelése.
+   Feladata a kapcsolat felvétele a böngészővel, és az átvitt adatok fejlécének kezelése.
      
 * New( oConnect, cRequest, bTrace )
   Létrehoz egy objektumot és befejezi a kapcsolatfelvételt.
@@ -53,4 +53,43 @@ A websocket támogatás a hbhttpd webszerverre épül.
 *    ReadBlock(/* @ */ cBlock, nTimeout )
        Beolvas egy websocket blokkot.
 
+### WebProtocol
+   A ws.js-ben lév javascript programmal kommunikáló protokol.
+   A WebSocket objektum a szúlője.
+    
+   * New( oConnect, cRequest, bTrace )
+   Létrehoz egy objektumot és befejezi a kapcsolatfelvételt.
 
+   * Write( xMessage ) *
+   Az xMessage tömböt hb_jsonEncode parancsal átalakítja és elküldi a javascript prógramnak
+   
+   * PageWrite( cName, hPar )
+   A tpl könyvtárban lévő cName nevű template file-t feldolgozza és behelyettesíti a hPar nevű hash tömbben lévő értékeket.
+   
+   * PageParse( cName, hPar )
+   * PutFields( hPar )
+   * SetFocus( cId )
+   * SetSelection( cId, nStart, nEnd )
+   * InsertHTML( cId, cHtml )
+   * OpenModal( cId )
+   * Set( cSearch, cName, CValue )
+   * SetStyle( cSearch, cName, CValue )
+   * CloseModal( cId )
+   * GetFields( nTimeout )
+   * WebRead( nTimeout, bTimeout )
+   * Timeout()
+   * Error()
+   * isCommand()
+   * Command()
+   * Parameter()
+   * isFiles()
+   * Files()
+   * isFields()
+   * isField( cName )
+   * Fields()
+   * FieldGet( cName, xVar, xDefault )
+   * Redirect( cLink )
+   * Inkeyon( cId )
+   * Inkeyoff( cId )
+
+   
