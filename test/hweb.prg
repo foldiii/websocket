@@ -118,17 +118,6 @@ PROCEDURE Main()
          "/hweb/konyvel"     => @konyvel(), ;
          "/"                 => {|| URedirect( "/hweb" ) } } } )
 
-      *
-      *  core.prg 711. sor
-      *    eredeit:
-      *            UWrite( UParse( xRet) )
-      *    új:
-      *            UWrite( UParse( xRet,,oServer:hConfig ) )
-      *  core.prg 144. sor
-      *     hb_socketsetreuseaddr(Self:hListen,TRUE)
-      *
-      *  uhttpd objectben  a hSession vátozót átteni az exported
-      *     változók közé
       oLogError:Close()
 #ifdef TRACE
       oLogAccess:Close()
@@ -189,8 +178,6 @@ local soreleje:="",k,sor
      sor+=soreleje+" "+nev+" ismeretlen tipus:"+valtype(adat)+hb_eol() 
   end
 RETURN sor
-//#command NAGYHIBA <szam> [<mezok,...>]=> hibat_ir(112,<szam>,,{<"mezok">},{<mezok>}) ; quit
-// #command <obj> WEBSAY <mezo> TO <nev> => <obj>:PutFields({<"nev"> => <mezo>}) 
 #command <obj> WEBSAY <mezo> TO <nev> => <obj>:PutFields({<(nev)> => <mezo>}) 
 #command <obj> WEBREAD <par> TIMEOUT <ido> => <par>:=<obj>:GetFields(<ido>) 
 static function konyvel(path)
@@ -201,21 +188,19 @@ local sor,Hcommand
    // dbUseArea( [<lNewArea>], [<cDriver>], <cName>, [<xcAlias>],
    //            [<lShared>], [<lReadonly>]) --> NIL
    *altd()
-   if __mvScope( "wbs" )#1
-      RETURN  PageParse("konyvel")
-   else      
-       if wbs:Status()==0
-         RETURN  PageParse("konyvel")
-      endif
+//    if __mvScope( "wbs" )#1
+//       RETURN  PageParse("konyvel")
+//    else      
+//        if wbs:Status()==0
+//          RETURN  wbs:PageParse("konyvel")
+//       endif
+//    endif
+   if wbs#NIL .and. wbs:Status()==0
+      RETURN  wbs:PageParse("konyvel")
    endif
    dbUseArea( .T., , "ugyfel", "ugyfel", .T., .F. )
    ordSetFocus( "rnev" )
    dbgotop()
-/*   
-   if wbs:PageWrite("hwebl")==nil
-      RETURN NIL
-   endif
-   */
    kiirat:=.y.
    while .y.
       if kiirat
