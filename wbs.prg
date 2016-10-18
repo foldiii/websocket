@@ -19,7 +19,7 @@ FUNCTION PageParse( cName, hPar )
    LOCAL rc
 
    hb_default( @hPar, hb_Hash() )
-   rc := UParse( hPar, cName, Tracelog() )
+   rc := UParse( hPar, cName, TraceLog() )
 
    RETURN( rc )
 
@@ -44,7 +44,6 @@ CREATE CLASS WebSocket MODULE FRIENDLY
    VAR cKeyResponse
    VAR nStatus  INIT 0 // 0 - nem WebSocket kapcsolat
    // 1 - érvényes Websocket kapcsolat
-   // 2 - multipart feltöltés
    VAR nErrorCode INIT 0
    VAR nErrorMode INIT 0  // 0 - normál hibakezelés hibakóddal tér vissza
    // 1 - "begin sequence" hibakezelés meghívja a break-t
@@ -53,35 +52,33 @@ CREATE CLASS WebSocket MODULE FRIENDLY
    VAR CFileBody
    VAR hSocket
    VAR hSSL
+   VAR bTrace
    VAR oConnect
-   VAR nBlockType   // Az utoljára beolvasott blokk tipusa
+   VAR nBlockType   // Az utoljára beolvasott blokk típusa
    METHOD KeyGen()
    METHOD CreateHead( nType, nLength, lLast, lMask )
    EXPORTED:
-   METHOD New( oConnect, cRequest )
+   METHOD New( oConnect, cRequest, bTrace )
    METHOD WriteRaw( cBuffer )
    METHOD WriteTextBlock( cBuffer )
    METHOD WriteBinBlock( cBuffer )
    METHOD Status()
-   METHOD Response()
    METHOD ErrorMode( nMod )
    METHOD ErrorCode()
-   METHOD ReadRaw( nLength, cBuffer, nTimeout )
-   METHOD ReadBlock( cBlock, nTimeout )
-   METHOD FileName() INLINE ( ::cFileName )
-   METHOD FileBody() INLINE ( ::cFileBody )
-   METHOD Socket() INLINE ( server[ "HSOCKET" ] )
+   METHOD ReadRaw( nLength,/* @ */ cBuffer, nTimeout )
+   METHOD ReadBlock(/* @ */ cBlock, nTimeout )
+   METHOD Socket() INLINE ( ::hSocket )
 
 ENDCLASS
-METHOD New( oConnect, cRequest ) CLASS WebSocket
+METHOD New( oConnect, cRequest, bTrace ) CLASS WebSocket
 
    LOCAL cResponse
-   LOCAL poz, tipus, oPost, oPart, mezonev, hibakod
 
    ::cRequest := cRequest
    ::cErrorString := ""
    ::hSocket := oConnect:hSocket
    ::hSSL := oConnect:hSSL
+   ::bTrace := bTrace
    ::oConnect := oConnect
    ::cWebsocketKey := hb_HGetDef( server, "HTTP_SEC_WEBSOCKET_KEY", "" )
    IF At( "upgrade", Lower( hb_HGetDef( server, "HTTP_CONNECTION", "" ) ) ) > 0 ;
@@ -94,40 +91,6 @@ METHOD New( oConnect, cRequest ) CLASS WebSocket
       cResponse += CR_LF
       if ::WriteRaw( cResponse ) > 0
          ::nStatus := 1
-      ENDIF
-   ELSE
-      tipus := hb_HGetDef( server, "CONTENT_TYPE", "nincs" )
-      poz := At( ";", tipus )
-      IF poz != 0
-         tipus := Left( tipus, poz - 1 )
-      ENDIF
-      IF tipus == "multipart/form-data"
-         ::nStatus := 2
-         oPost := tipmail():new()
-         hibakod := oPost:fromstring( "CONTENT-TYPE: " + server[ "CONTENT_TYPE" ] + e"\r\n\r\n" + ::cRequest )
-         IF hibakod == 0
-            ::nErrorCode := 4 // adatformátum hiba
-         ELSE
-            ::nErrorCode := 2 // nincs feltöltött file
-            WHILE oPost:GetAttachment() != NIL
-               oPart := oPost:nextAttachment()
-               mezonev := oPart:GetFieldOption( "Content-Disposition", "name" )
-               IF mezonev == '"file"' .OR. mezonev == 'file'
-                  ::cFileName := oPart:GetFieldOption( "Content-Disposition", "filename" )
-                  IF Left( ::cFileName, 1 ) == '"' .AND. Right( ::cFileName, 1 ) == '"'
-                     ::cFileName = SubStr( ::cFileName, 2, Len( ::cFileName ) -2 )
-                  ENDIF
-                  IF Len( ::cFileName ) > 0
-                     ::cFileBody := oPart:GetRawBody()
-                     ::cFileBody := SubStr( ::cFileBody, 1, Len( ::cFileBody ) -2 )
-                     ::nErrorCode := 0
-                     EXIT
-                  ELSE
-                     ::nErrorCode := 3 // nem volt kijelölve file a feltöltéshez
-                  ENDIF
-               ENDIF
-            ENDDO
-         ENDIF
       ENDIF
    ENDIF
 
@@ -169,7 +132,7 @@ METHOD WriteBinBlock( cBuffer ) CLASS WebSocket
    rc := ::WriteRaw( ::CreateHead( 2, hb_BLen( cBuffer ) ) + cBuffer )
 
    return( rc )
-METHOD ReadRaw( nLength, cBuffer, nTimeout ) CLASS WebSocket
+METHOD ReadRaw( nLength,/* @ */ cBuffer, nTimeout ) CLASS WebSocket
 
    LOCAL rc
 
@@ -180,7 +143,7 @@ METHOD ReadRaw( nLength, cBuffer, nTimeout ) CLASS WebSocket
    ENDIF
 
    return( rc )
-METHOD ReadBlock( cBlock, nTimeout ) CLASS WebSocket
+METHOD ReadBlock(/* @ */ cBlock, nTimeout ) CLASS WebSocket
 
    LOCAL rc
    LOCAL lLast := .n.
@@ -267,8 +230,6 @@ METHOD Status() CLASS WebSocket
        -1 Hiba kilépés
    */
    return( ::nStatus )
-METHOD Response() CLASS WebSocket
-   return( "" )
 METHOD ErrorMode( nMod ) CLASS WebSocket
 
    IF nMod # NIL
@@ -352,7 +313,7 @@ CLASS WebProtocol FROM WebSocket
    VAR   jsonformat INIT .y.  // .y. human format .n. compact
    EXPORTED:
    METHOD Write( oMessage )
-   METHOD New( oConnect, cRequest )
+   METHOD New( oConnect, cRequest, bTrace )
    METHOD PageWrite( cName, hPar )
    METHOD PageParse( cName, hPar )
    METHOD PutFields( hPar )
@@ -381,10 +342,10 @@ CLASS WebProtocol FROM WebSocket
    METHOD Inkeyoff( cId )
 
 ENDCLASS
-METHOD New( oConnect, cRequest ) CLASS WebProtocol
+METHOD New( oConnect, cRequest, bTrace ) CLASS WebProtocol
 
    ::nError := 0
-   ::Super:New( oConnect, cRequest )
+   ::Super:New( oConnect, cRequest, bTrace )
 
    return( Self )
 METHOD Webread( nTimeout, bTimeout ) CLASS WebProtocol
@@ -445,7 +406,7 @@ METHOD PageParse( cName, hPar ) CLASS WebProtocol
    LOCAL rc
 
    hb_default( @hPar, hb_Hash() )
-   rc := UParse( hPar, cName, httpd:hconfig )
+   rc := UParse( hPar, cName, ::bTrace )
 
    RETURN( rc )
 METHOD PutFields( hPar ) CLASS WebProtocol
