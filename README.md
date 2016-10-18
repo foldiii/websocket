@@ -18,11 +18,9 @@ A websocket támogatás a hbhttpd webszerverre épül.
    feladata a kapcsolat felvétele a böngészővel, és az átvitt adatok fejlécének kezelése.
      
 * New( oConnect, cRequest, bTrace )
-
   Létrehoz egy objektumot és befejezi a kapcsolatfelvételt.
 
 * Status()
-
   Visszaadja a kapcsolat típusát
    - 0 - nem websocek kérés volt
    - 1 - érvényes websocket kapcsolat kiépült
@@ -31,12 +29,12 @@ A websocket támogatás a hbhttpd webszerverre épül.
     Visszaadja a TCP socket-t 
 
 *    ErrorCode()
-       Az utoljára elvégzett művelet hibakódját adja vissza
+     Az utoljára elvégzett művelet hibakódját adja vissza
 
-    ErrorMode( nMod )
+*    ErrorMode( nMod )
        Beállítja a hibakezelés módját
-         0 - Az ErrorCode fügvénnyel lehet lekérdezni a hibakódot
-         1 - Hiba esetén "break" hívása WebSocketError objektummal
+       -  0 - Az ErrorCode fügvénnyel lehet lekérdezni a hibakódot
+       -  1 - Hiba esetén "break" hívása WebSocketError objektummal
 
     WriteRaw( cBuffer )
        A cBuffer blokk kiírása a websocket kapcsolatra
