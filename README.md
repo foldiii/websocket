@@ -15,7 +15,7 @@ A websocket támogatás a hbhttpd webszerverre épül.
 ## Objektumok a wbs.prg fájlban:
 
 ### WebSocket
-> feladata a kapcsolat felvétele a böngészővel, és az átvitt adatok fejlécének kezelése.
+   feladata a kapcsolat felvétele a böngészővel, és az átvitt adatok fejlécének kezelése.
      
 * New( oConnect, cRequest, bTrace )
 
@@ -23,9 +23,9 @@ A websocket támogatás a hbhttpd webszerverre épül.
 
 * Status()
 
-> Visszaadja a kapcsolat típusát
->-  0 - nem websocek kérés volt
->-  1 - érvényes websocket kapcsolat kiépült
+  Visszaadja a kapcsolat típusát
+ -  0 - nem websocek kérés volt
+ -  1 - érvényes websocket kapcsolat kiépült
 
 Socket()
       Visszaadja a TCP socket-t 
