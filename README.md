@@ -36,20 +36,20 @@ A websocket támogatás a hbhttpd webszerverre épül.
        -  0 - Az ErrorCode fügvénnyel lehet lekérdezni a hibakódot
        -  1 - Hiba esetén "break" hívása WebSocketError objektummal
 
-    WriteRaw( cBuffer )
+*   WriteRaw( cBuffer )
        A cBuffer blokk kiírása a websocket kapcsolatra
 
-    WriteTextBlock( cBuffer )
+*    WriteTextBlock( cBuffer )
        A cBuffer text módu fejlécének elkézítése és kiírása a WriteRaw fügvénnyel
 
-    WriteBinBlock( cBuffer )
+*    WriteBinBlock( cBuffer )
        A cBuffer bináris módu fejlécének elkézítése és kiírása a WriteRaw fügvénnyel
        Még nem láttam böngészőt ami támogatta volna!!!
 
-    ReadRaw( nLength,/* @ */ cBuffer, nTimeout )
+*    ReadRaw( nLength,/* @ */ cBuffer, nTimeout )
        Adott számú byte beolvasása a CBuffer-be
 
-    ReadBlock(/* @ */ cBlock, nTimeout )
+*    ReadBlock(/* @ */ cBlock, nTimeout )
        Beolvas egy websocket blokkot.
 
 
