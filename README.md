@@ -19,18 +19,18 @@ A websocket támogatás a hbhttpd webszerverre épül.
      
 * New( oConnect, cRequest, bTrace )
 
-- Létrehoz egy objektumot és befejezi a kapcsolatfelvételt.
+  Létrehoz egy objektumot és befejezi a kapcsolatfelvételt.
 
 * Status()
 
   Visszaadja a kapcsolat típusát
- -  0 - nem websocek kérés volt
- -  1 - érvényes websocket kapcsolat kiépült
+   - 0 - nem websocek kérés volt
+   - 1 - érvényes websocket kapcsolat kiépült
 
-Socket()
-      Visszaadja a TCP socket-t 
+*   Socket()
+    Visszaadja a TCP socket-t 
 
-    ErrorCode()
+*    ErrorCode()
        Az utoljára elvégzett művelet hibakódját adja vissza
 
     ErrorMode( nMod )
