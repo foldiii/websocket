@@ -1,6 +1,8 @@
 # Harbour websocket támogatás
 
-A websocket kapcsolat egy közvetlen csatornát épít ki a böngésző egy lapján megjelenő weboldal és egy programszál között.
+A websocket kapcsolat egy közvetlen csatornát épít ki a böngésző egy lapján megjelenő weboldal és egy web szerveren futó programszál között.
+
+A websocket támogatás a hbhttpd webszerverre épül.
 
 Ez a kapcsolat lehetővé teszi a közvetlen adatcserét a programszál és az oldal JavaScript programja között.
 A weboldal a program képernyőjeként és billentyűzeteként viselkedik, mint egy terminál.
@@ -9,7 +11,7 @@ A program módosítása nélkül lehetőség van a megjelenés teljes áttervez�
 
 Bármilyen operációs rendszeren és bármilyen hardveren lehet a felhasználói felület, ha van websoket-et támogató böngésző az eszközre.
 
-A websocket támogatás a hbhttpd webszerverre épül.
+A támogatás használatához a felhasználói programhoz kell szerkeszteni a wbs.prg modult. 
 
 ## Objektumok a wbs.prg fájlban:
 
@@ -21,7 +23,7 @@ A websocket támogatás a hbhttpd webszerverre épül.
 
    * Status()
    Visszaadja a kapcsolat típusát
-      - 0 - nem websocek kérés volt
+      - 0 - nem websocket kérés volt
       - 1 - érvényes websocket kapcsolat kiépült
 
    *   Socket()
@@ -98,6 +100,12 @@ A websocket támogatás a hbhttpd webszerverre épül.
    Ha timeoutra futott, akkor üres tömböt ad vissza.
 
    * WebRead( nTimeout, bTimeout )
+   A felhasználói válaszra vár a harbour read parancsának felel meg.
+   Ha nincs bTiemout megadva, akkor az nTimeout-ban megadott idő  letelte után visszatér egy üres hash többel akkor is ha nincs válasz.
+   Ha nTimeout 0 vagy nincs megadva akkor korlátlan ideig vár.
+   Ha bTimeout egy kódblokkot tartalmaz, akkor nTimeout időnként meghívja ezt a kódblokkot. 
+   Ha a kódblokk egy hash tömbbel tér vissza akkor visszadja ezt a kódblokkot.
+
    * isTimeout()
    Igazat ad vissza, ha az utolsó I/O művelet időtúllépéssel tért vissza.
 
@@ -131,7 +139,7 @@ A websocket támogatás a hbhttpd webszerverre épül.
    Igaz az értéke, ha van feltöltött file.
 
    * Files()
-   Egy tömböt ad vissza, ami minden feltöltött filehoz egy has tömböt tartalmaz, amiben a következö adatok vannak:
+   Egy tömböt ad vissza, ami minden feltöltött filehoz egy hash tömböt tartalmaz, amiben a következö adatok vannak:
    >- name = a file neve
    >- size = a file mérete
    >- data = a file tartalma base64 kódolással
