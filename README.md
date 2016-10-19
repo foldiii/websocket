@@ -4,11 +4,10 @@ A websocket kapcsolat egy közvetlen csatornát épít ki a böngésző egy lapj
 
 Ez a kapcsolat lehetővé teszi a közvetlen adatcserét a programszál és az oldal JavaScript programja között.
 A weboldal a program képernyőjeként és billentyűzeteként viselkedik, mint egy terminál.
-A felhasználói felület mindent kihasználhat amit a HTML lehetővé tesz.
-Például képek, videók megjelenítése. A program módosítása nélkül lehetőség van a megjelenés teljes áttervezésére.
-Különböző színvilág, logók és más nyelv alkalmazására
+A felhasználói felület mindent kihasználhat, amit a HTML lehetővé tesz, például képek, videók megjelenítése.
+A program módosítása nélkül lehetőség van a megjelenés teljes áttervezésére, különböző színvilág, logók és más nyelv alkalmazására.
 
-Bármilyen operáciosrendszeren és bármilyen hardveren lehet a felhasználói felület ha van websoket-t támogató böngésző az eszközre.
+Bármilyen operációs rendszeren és bármilyen hardveren lehet a felhasználói felület, ha van websoket-et támogató böngésző az eszközre.
 
 A websocket támogatás a hbhttpd webszerverre épül.
 
@@ -29,7 +28,7 @@ A websocket támogatás a hbhttpd webszerverre épül.
    Visszaadja a TCP socket-t 
 
    *    ErrorCode()
-   Az utoljára elvégzett művelet hibakódját adja vissza
+   Az utoljára elvégzett művelet hibakódját adja vissza.
 
    *    ErrorMode( nMod )
    Beállítja a hibakezelés módját
@@ -40,12 +39,12 @@ A websocket támogatás a hbhttpd webszerverre épül.
    A cBuffer blokk kiírása a websocket kapcsolatra
 
    *    WriteTextBlock( cBuffer )
-   A cBuffer text módu fejlécének elkézítése és kiírása a WriteRaw fügvénnyel
+   A cBuffer text módú fejlécének elkészítése és kiírása a WriteRaw függvénnyel
 
    *    WriteBinBlock( cBuffer )
-   A cBuffer bináris módu fejlécének elkézítése és kiírása a WriteRaw fügvénnyel.
+   A cBuffer bináris módú fejlécének elkészítése és kiírása a WriteRaw függvénnyel.
        
-   Még nem láttam böngészőt ami támogatta volna!!!
+   Még nem láttam böngészőt, ami támogatta volna!!!
 
    *    ReadRaw( nLength,/* @ */ cBuffer, nTimeout )
    Adott számú byte beolvasása a CBuffer-be
@@ -54,27 +53,27 @@ A websocket támogatás a hbhttpd webszerverre épül.
    Beolvas egy websocket blokkot.
 
 ### WebProtocol
-   A ws.js-ben lév javascript programmal kommunikáló protokol.
-   A WebSocket objektum a szúlője.
+   A ws.js-ben lévő javascript programmal kommunikáló protokoll.
+   A WebSocket objektum a szülője.
     
    * New( oConnect, cRequest, bTrace )
    Létrehoz egy objektumot és befejezi a kapcsolatfelvételt.
 
    * Write( xMessage )
-   Az xMessage tömböt hb_jsonEncode parancsal átalakítja és elküldi a javascript prógramnak.
-   Ha az xMessage karakteres változó akkor változtatás nélkűl elküldi.
+   Az xMessage tömböt hb_jsonEncode paranccsal átalakítja és elküldi a javascript programnak.
+   Ha az xMessage karakteres változó, akkor változtatás nélkül küldi el.
  
    * PageWrite( cName, hPar )
    A tpl könyvtárban lévő cName nevű template file-t feldolgozza és behelyettesíti a hPar nevű hash tömbben
-   lévő értékeket. Majd elküldi a Write fügvénnyel.
+   lévő értékeket, majd elküldi a Write függvénnyel.
  
    * PageParse( cName, hPar )
    A tpl könyvtárban lévő cName nevű template file-t feldolgozza és behelyettesíti a hPar nevű hash tömbben
-   lévő értékeket. Majd elküldi visszaadja az eredményt egy karakteres stringben.
+   lévő értékeket, majd visszaadja az eredményt egy karakteres stringben.
  
    * PutFields( hPar )
-   A hPar hash tömbben megadott Id érték párok alapján átirja a weboldal adatait.
-   Ha input vagy text típusú html ellem akkor a value értékét cseréli le, ha egyéb akkor az elem innerHTML tulajdonságát változtatja meg.
+   A hPar hash tömbben megadott Id - érték párok alapján átírja a weboldal adatait.
+   Ha input vagy text típusú a html elem, akkor a value értékét cseréli le, ha egyéb, akkor az elem innerHTML tulajdonságát változtatja meg.
    ````xbase
       wbs:PutFields({"id1"=>23, "id2"=>"vétel"})
    ````
@@ -83,10 +82,10 @@ A websocket támogatás a hbhttpd webszerverre épül.
    A cId-ben megadott elem innerHTML tulajdonságát változtatja meg.
 
    * SetFocus( cId )
-   A cId-ben megadott elemre teszi a fokuszt.
+   A cId-ben megadott elemre teszi a fókuszt.
 
    * SetSelection( cId, nStart, nEnd )
-   A cId-ben megadott input elem nStart-tól nEnd-ig tartó résszének kijelölése.
+   A cId-ben megadott input elem nStart-tól nEnd-ig tartó részének kijelölése.
 
    * Set( cSearch, cName, cValue )
    A cSearch-ban megadott CSS selector által kiválasztott elemek cName nevű tulajdonságának a cValue értékeket adja.
@@ -96,25 +95,25 @@ A websocket támogatás a hbhttpd webszerverre épül.
 
    * GetFields( nTimeout )
    Beolvas egy websocket blokkot és a megkapott értékeket egy hash tömbben adja vissza.
-   Ha timeoutra futott akkor üres tömböt ad vissza.
+   Ha timeoutra futott, akkor üres tömböt ad vissza.
 
    * WebRead( nTimeout, bTimeout )
    * isTimeout()
-   Igazat ad vissza ha az utolsó I/O müvelet időtullépéssel tért vissza.
+   Igazat ad vissza, ha az utolsó I/O művelet időtúllépéssel tért vissza.
 
    * isError()
-   Igazat ad vissza ha az utolsó I/O müvelet során hiba történt.
+   Igazat ad vissza, ha az utolsó I/O művelet során hiba történt.
 
    * isCommand()
-   Igaz az értéke ha van lenyomott gomb azonosító a visszakapott értékek között.
+   Igaz az értéke, ha van lenyomott gomb azonosító a visszakapott értékek között.
 
    * Command()
    A gombhoz rendelt parancsot adja vissza.
    ````HTML
    <button data-command="OK">OK</button>
    ````
-   Ha a type=submit paraméter is meg van adva akkor az összes input mezőt is elküldi ami az aktuális formban van. 
-   Ha nincs form akkor az oldalon lávő összes input mezőt elküldi.
+   Ha a type=submit paraméter is meg van adva, akkor az összes input mezőt is elküldi, ami az aktuális formban van. 
+   Ha nincs form, akkor az oldalon lévő összes input mezőt elküldi.
    ````HTML
    <form>
    <input text id=szoveg />
@@ -129,32 +128,32 @@ A websocket támogatás a hbhttpd webszerverre épül.
    ````
 
    * isFiles()
-   Igaz az értéke ha van feltöltött file.
+   Igaz az értéke, ha van feltöltött file.
 
    * Files()
-   Egy tömböt ad vissza ami minden feltöltött filehoz egy has tömöt tartalmaz amiben a következö adatok vannak:
+   Egy tömböt ad vissza, ami minden feltöltött filehoz egy has tömböt tartalmaz, amiben a következö adatok vannak:
    >- name = a file neve
    >- size = a file mérete
    >- data = a file tartalma base64 kódolással
    >- id   = a mező ID-je
 
    * isFields()
-   Igazat ad vissza a van input mező.
+   Igazat ad vissza, ha van input mező.
 
    * isField( cName )
-   Igazat ad vissza ha van cName azonosítóju input mező.
+   Igazat ad vissza, ha van cName azonosítójú input mező.
 
    * Fields()
-   Egy hash tömböt ad vissza egy mező iD érték párokat ad vissza.
+   Egy hash tömböt ad vissza, amely mező iD - érték párokat tartalmaz.
 
    * FieldGet( cName,/* @ */ xVar, xDefault )
-   A cName nevü mező értékét visszaadja az xVar változóban ha nincs ilyen változó akkor az xDefault értéket  adja vissza.
+   A cName nevű mező értékét visszaadja az xVar változóban, ha nincs ilyen változó, akkor az xDefault értéket adja vissza.
 
    * Redirect( cLink )
    A aktuális weboldalt kicseréli a cLink című oldalra.
 
    * Inkeyon( cId )
-   Minden gombnyomást átküld, ha a cId nincs megadva akkor az egész oldalon. Ha cId meg van adva akkor az adott elemen.
+   Minden gombnyomást átküld, ha a cId nincs megadva, akkor az egész oldalon, ha cId meg van adva, akkor csak az adott elemen.
 
    * Inkeyoff( cId )
    Kikapcsolja a gombok átküldését.
