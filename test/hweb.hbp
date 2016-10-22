@@ -1,9 +1,6 @@
-hbhttpd.hbc
-hbssl.hbc
--o{hb_name}
--lhbtip
--w3 -es2 
+wbs.hbc
+
+-w3 -es2
 -b
+
 hweb.prg
-../core.prg{hb_major<'4'&&hb_minor<'4'}
-../wbs.prg
