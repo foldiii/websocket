@@ -7,38 +7,37 @@ MEMVAR server, httpd
 
 FUNCTION TraceLog( bTrace )
 
-   STATIC trace := NIL
+   STATIC s_trace
 
-   IF bTrace # NIL
-      trace := bTrace
+   IF HB_ISEVALITEM( bTrace )
+      s_trace := bTrace
    ENDIF
 
-   RETURN( trace )
+   RETURN s_trace
+
 FUNCTION PageParse( cName, hPar )
-
-   LOCAL rc
-
-   hb_default( @hPar, hb_Hash() )
-   rc := UParse( hPar, cName, TraceLog() )
-
-   RETURN( rc )
+   RETURN UParse( hb_defaultValue( hPar, { => } ), cName, TraceLog() )
 
 CREATE CLASS WebSocketError
 
-   VAR ErrorCode INIT 0
+   VAR ErrorCode   INIT 0
    VAR Description INIT ""
+
    METHOD New( ErrorCode, Description )
 
 ENDCLASS
+
 METHOD New( ErrorCode, Description ) CLASS WebSocketError
 
    ::ErrorCode := ErrorCode
    ::Description := Description
 
-   return( self )
+   RETURN self
+
 CREATE CLASS WebSocket MODULE FRIENDLY
 
    PROTECTED:
+
    VAR cRequest
    VAR cWebsocketKey
    VAR cKeyResponse
@@ -55,9 +54,12 @@ CREATE CLASS WebSocket MODULE FRIENDLY
    VAR bTrace
    VAR oConnect
    VAR nBlockType   // Az utoljára beolvasott blokk típusa
+
    METHOD KeyGen()
    METHOD CreateHead( nType, nLength, lLast, lMask )
+
    EXPORTED:
+
    METHOD New( oConnect, cRequest, bTrace )
    METHOD WriteRaw( cBuffer )
    METHOD WriteTextBlock( cBuffer )
@@ -65,11 +67,12 @@ CREATE CLASS WebSocket MODULE FRIENDLY
    METHOD Status()
    METHOD ErrorMode( nMod )
    METHOD ErrorCode()
-   METHOD ReadRaw( nLength,/* @ */ cBuffer, nTimeout )
-   METHOD ReadBlock(/* @ */ cBlock, nTimeout )
+   METHOD ReadRaw( nLength, /* @ */ cBuffer, nTimeout )
+   METHOD ReadBlock( /* @ */ cBlock, nTimeout )
    METHOD Socket() INLINE ( ::hSocket )
 
 ENDCLASS
+
 METHOD New( oConnect, cRequest, bTrace ) CLASS WebSocket
 
    LOCAL cResponse
@@ -89,64 +92,54 @@ METHOD New( oConnect, cRequest, bTrace ) CLASS WebSocket
       cResponse += "Connection: Upgrade" + CR_LF
       cResponse += "Sec-WebSocket-Accept: " + ::cKeyResponse + CR_LF
       cResponse += CR_LF
-      if ::WriteRaw( cResponse ) > 0
+      IF ::WriteRaw( cResponse ) > 0
          ::nStatus := 1
       ENDIF
    ENDIF
 
-   return( Self )
-METHOD KeyGen() CLASS WebSocket
+   RETURN Self
 
-   LOCAL rc
+METHOD KeyGen() CLASS WebSocket
 
    IF hb_BLen( ::cWebsocketKey ) > 0
       ::cKeyResponse := hb_base64Encode( hb_SHA1( ::cWebSocketKey + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11", .T. ) )
-      rc := .y.
-   ELSE
-      rc := .n.
+      RETURN .T.
    ENDIF
 
-   return( rc )
+   RETURN .F.
+
 METHOD WriteRaw( cBuffer ) CLASS WebSocket
 
-   LOCAL rc
+   LOCAL rc := ::oConnect:Write( cBuffer )
 
-   rc := ::oConnect:Write( cBuffer )
    ::nErrorCode := rc
-   if ::nErrorMode == 1 .AND. ::nErrorCode < 0
+   IF ::nErrorMode == 1 .AND. ::nErrorCode < 0
       Break( WebSocketError():New( ::nErrorCode, "WebSocket írási hib!" ) )
    ENDIF
 
-   return( rc )
+   RETURN rc
+
 METHOD WriteTextBlock( cBuffer ) CLASS WebSocket
+   RETURN ::WriteRaw( ::CreateHead( 1, hb_BLen( cBuffer ) ) + cBuffer )
 
-   LOCAL rc
-
-   rc := ::WriteRaw( ::CreateHead( 1, hb_BLen( cBuffer ) ) + cBuffer )
-
-   return( rc )
 METHOD WriteBinBlock( cBuffer ) CLASS WebSocket
+   RETURN ::WriteRaw( ::CreateHead( 2, hb_BLen( cBuffer ) ) + cBuffer )
 
-   LOCAL rc
+METHOD ReadRaw( nLength, /* @ */ cBuffer, nTimeout ) CLASS WebSocket
 
-   rc := ::WriteRaw( ::CreateHead( 2, hb_BLen( cBuffer ) ) + cBuffer )
+   LOCAL rc := ::oConnect:Read( @cBuffer, nLength, nTimeout )
 
-   return( rc )
-METHOD ReadRaw( nLength,/* @ */ cBuffer, nTimeout ) CLASS WebSocket
-
-   LOCAL rc
-
-   rc := ::oConnect:Read( @cBuffer, nLength, nTimeout )
    ::nErrorCode := rc
-   if ::nErrorMode == 1 .AND. ::nErrorCode < 0
-      Break( WebSocketError():New( ::nErrorCode, "WebSocket olvasási hib!" ) )
+   IF ::nErrorMode == 1 .AND. ::nErrorCode < 0
+      Break( WebSocketError():New( ::nErrorCode, "WebSocket olvasási hiba!" ) )
    ENDIF
 
-   return( rc )
-METHOD ReadBlock(/* @ */ cBlock, nTimeout ) CLASS WebSocket
+   RETURN rc
+
+METHOD ReadBlock( /* @ */ cBlock, nTimeout ) CLASS WebSocket
 
    LOCAL rc
-   LOCAL lLast := .n.
+   LOCAL lLast := .F.
    LOCAL lMask
    LOCAL nLength
    LOCAL cBuffer := ""
@@ -154,11 +147,11 @@ METHOD ReadBlock(/* @ */ cBlock, nTimeout ) CLASS WebSocket
    LOCAL k, l
 
    cBlock := ""
-   WHILE !lLast
+   WHILE ! lLast
       cBuffer := Space( 2 )
       rc := ::ReadRaw( 2, @cBuffer, nTimeout )
-      IF rc # 2
-         return( rc )
+      IF rc != 2
+         RETURN rc
       ENDIF
       // The opcode (4 bits) indicates type of transferred frame:
       // text (1) or binary (2) for transferring application data or a control frame
@@ -167,46 +160,43 @@ METHOD ReadBlock(/* @ */ cBlock, nTimeout ) CLASS WebSocket
       ::nBlockType := hb_bitAnd( hb_BPeek( cBuffer, 1 ), 0x0f )
       lMask := hb_bitAnd( hb_BPeek( cBuffer, 2 ), 0x80 ) > 0
       nLength := hb_bitAnd( hb_BPeek( cBuffer, 2 ), 0x7f )
-      if ::nBlockType == 8
+      IF ::nBlockType == 8
          ::nErrorCode := -2
-         if ::nErrorMode == 1 .AND. ::nErrorCode < 0
+         IF ::nErrorMode == 1 .AND. ::nErrorCode < 0
             Break( WebSocketError():New( ::nErrorCode, "WebSocket lezárás kérése!" ) )
          ENDIF
-         return( ::nErrorCode )
+         RETURN ::nErrorCode
       ELSE
-         switch nLength
+         SWITCH nLength
          CASE 126
             // 16 bites hossz
             cBuffer := Space( 2 )
-            rc := ::ReadRaw( 2, @cBuffer )
-            IF rc # 2
-               return( rc )
+            IF ( rc := ::ReadRaw( 2, @cBuffer ) ) != 2
+               RETURN rc
             ENDIF
             nLength := hb_BPeek( cBuffer, 1 ) * 256 + hb_BPeek( cBuffer, 2 )
             EXIT
          CASE 127
             // 64 bites hossz
             cBuffer := Space( 2 )
-            rc := ::ReadRaw( 8, @cBuffer )
-            IF rc # 8
-               return( rc )
+            IF ( rc := ::ReadRaw( 8, @cBuffer ) ) != 8
+               RETURN rc
             ENDIF
             nLength := ( ( hb_BPeek( cBuffer, 1 ) * 256 + hb_BPeek( cBuffer, 2 ) ) * 256 + hb_BPeek( cBuffer, 3 ) ) * 256 + hb_BPeek( cBuffer, 4 ) * 256 * 256 * 256 * 256
             nLength += ( ( hb_BPeek( cBuffer, 5 ) * 256 + hb_BPeek( cBuffer, 6 ) ) * 256 + hb_BPeek( cBuffer, 7 ) ) * 256 + hb_BPeek( cBuffer, 8 )
             EXIT
-         OTHERWISE
-         endswitch
+         ENDSWITCH
          IF lMask
             cBuffer := Space( 4 )
             rc := ::ReadRaw( 4, @cMask )
-            IF rc # 4
-               return( rc )
+            IF rc != 4
+               RETURN rc
             ENDIF
          ENDIF
          cBuffer := Space( nLength )
          rc := ::ReadRaw( nLength, @cBuffer )
-         IF rc # nLength
-            return( rc )
+         IF rc != nLength
+            RETURN rc
          ENDIF
          IF lMask
             k := 1
@@ -222,29 +212,32 @@ METHOD ReadBlock(/* @ */ cBlock, nTimeout ) CLASS WebSocket
       rc := hb_BLen( cBlock )
    ENDDO
 
-   return( rc )
+   RETURN rc
+
 METHOD Status() CLASS WebSocket
    /*
         > 0 WebSocket kapcsolat felépült
         0 Nem Websocket kérés
        -1 Hiba kilépés
    */
-   return( ::nStatus )
+   RETURN ::nStatus
+
 METHOD ErrorMode( nMod ) CLASS WebSocket
 
-   IF nMod # NIL
+   IF nMod != NIL
       ::nErrorMode := nMod
    ENDIF
 
-   return( ::nErrorMode )
+   RETURN ::nErrorMode
+
 METHOD ErrorCode() CLASS WebSocket
    /*
         > 0 Érvényes művelet
         0 Timeout
        -1 Hiba kilépés
    */
-   return( ::nErrorCode )
-METHOD CreateHead( nType, nLength, lLast, lMask ) CLASS WebSocket
+   RETURN ::nErrorCode
+
 /*
    nType: 1 szöveg
           2 bináris
@@ -254,17 +247,21 @@ METHOD CreateHead( nType, nLength, lLast, lMask ) CLASS WebSocket
    lLast: logikai érték ha igaz ez az utolsó
    lMask: logikai érték ha igaz van Mask
 */
+METHOD CreateHead( nType, nLength, lLast, lMask ) CLASS WebSocket
 
    // text (1) or binary (2) for transferring application data or a control frame
    // such as connection close (8), ping (9), and pong (10) for connection liveness checks.
    LOCAL cHead := ""
    LOCAL nByte := 0, tbyte, k
-   hb_default( @lLast, .y. )
-   hb_default( @lMask, .n. )
-   IF  lLast
+
+   hb_default( @lLast, .T. )
+   hb_default( @lMask, .F. )
+
+   IF lLast
       nByte += 0x80
    ENDIF
-   switch nType
+
+   SWITCH nType
    CASE 1
    CASE 2
    CASE 8
@@ -275,10 +272,11 @@ METHOD CreateHead( nType, nLength, lLast, lMask ) CLASS WebSocket
    OTHERWISE
       nByte += 8
       EXIT
-   endswitch
+   ENDSWITCH
+
    cHead += hb_BChar( nByte )
    nByte := 0
-   IF  lMask
+   IF lMask
       nByte += 0x80
    ENDIF
    IF nLength > 125
@@ -304,14 +302,19 @@ METHOD CreateHead( nType, nLength, lLast, lMask ) CLASS WebSocket
       cHead += hb_BChar( nByte )
    ENDIF
 
-   return( cHead )
+   RETURN cHead
+
 CLASS WebProtocol FROM WebSocket
 
-   VAR   base64 INIT .y.
+   VAR   base64 INIT .T.
+
    PROTECTED:
+
    VAR   Respond
-   VAR   jsonformat INIT .y.  // .y. human format .n. compact
+   VAR   jsonformat INIT .T.  // .T. human format .F. compact
+
    EXPORTED:
+
    METHOD Write( oMessage )
    METHOD New( oConnect, cRequest, bTrace )
    METHOD PageWrite( cName, hPar )
@@ -334,35 +337,35 @@ CLASS WebProtocol FROM WebSocket
    METHOD isFields()
    METHOD isField( cName )
    METHOD Fields()
-   METHOD FieldGet( cName, xVar, xDefault )
+   METHOD FieldGet( cName, /* @ */ xVar, xDefault )
    METHOD Redirect( cLink )
    METHOD Inkeyon( cId )
    METHOD Inkeyoff( cId )
 
 ENDCLASS
+
 METHOD New( oConnect, cRequest, bTrace ) CLASS WebProtocol
 
    ::Super:New( oConnect, cRequest, bTrace )
 
-   return( Self )
+   RETURN Self
+
 METHOD Webread( nTimeout, bTimeout ) CLASS WebProtocol
 
-   WHILE .y.
+   WHILE .T.
       ::Respond = ::GetFields( nTimeout )
-      IF nTimeout # NIL .AND. bTimeout # NIL .AND. ::isTimeout()
+      IF nTimeout != NIL .AND. HB_ISEVALITEM( bTimeout ) .AND. ::isTimeout()
          ::Respond := Eval( bTimeout )
-         IF ValType( ::Respond ) == "H"
+         IF HB_ISHASH( ::Respond )
             EXIT
          ENDIF
       ELSE
          EXIT
       ENDIF
    ENDDO
-   IF ValType( ::Respond ) # "H"
-      ::Respond := hb_Hash()
-   ENDIF
 
-   RETURN( ::Respond )
+   RETURN hb_defaultValue( ::Respond, { => } )
+
 METHOD Write( oMessage ) CLASS WebProtocol
 
    LOCAL rc := ""
@@ -370,168 +373,144 @@ METHOD Write( oMessage ) CLASS WebProtocol
 
    IF Len( oMessage ) > 0
       cMessage := hb_jsonEncode( oMessage, ::jsonformat )
-      if ::base64
+      IF ::base64
          cMessage := hb_jsonEncode( { "base64" => hb_base64Encode( cMessage ) }, ::jsonformat )
-         // ?"1:",cMessage
-         // cMessage:=hb_translate(cMessage,"UTF16LE","UTF8")
-         // ?"2:",cMessage
-         // cMessage:=hb_translate(cMessage,"UTF8","UTF16LE")
-         // ?"3:",cMessage
+#if 0
+         ? "1:", cMessage
+         cMessage := hb_Translate( cMessage, "UTF16LE", "UTF8" )
+         ? "2:", cMessage
+         cMessage := hb_Translate( cMessage, "UTF8", "UTF16LE" )
+         ? "3:", cMessage
+#endif
       ENDIF
-      if ::WriteTextBlock( cMessage ) <= 0
+      IF ::WriteTextBlock( cMessage ) <= 0
          rc := NIL
       ENDIF
    ENDIF
 
-   RETURN( rc )
+   RETURN rc
+
 METHOD isTimeout() CLASS WebProtocol
    RETURN ::Super:ErrorCode() == 0
+
 METHOD isError() CLASS WebProtocol
    RETURN ::Super:ErrorCode() < 0
+
 METHOD PageWrite( cName, hPar ) CLASS WebProtocol
 
    LOCAL rc
 
-   rc := ::PageParse( cName, hPar )
-   IF rc # NIL
-      return( ::Write( { "newpage" => rc } ) )
+   IF ( rc := ::PageParse( cName, hPar ) ) != NIL
+      RETURN ::Write( { "newpage" => rc } )
    ENDIF
 
-   RETURN( rc )
+   RETURN rc
+
 METHOD PageParse( cName, hPar ) CLASS WebProtocol
+   RETURN UParse( hb_defaultValue( hPar, { => } ), cName, ::bTrace )
 
-   LOCAL rc
-
-   hb_default( @hPar, hb_Hash() )
-   rc := UParse( hPar, cName, ::bTrace )
-
-   RETURN( rc )
 METHOD PutFields( hPar ) CLASS WebProtocol
+   RETURN ::Write( { "ertek" => hb_defaultValue( hPar, { => } ) } )
 
-   hb_default( @hPar, hb_Hash() )
-
-   RETURN( ::Write( hb_Hash( "ertek", hPar ) ) )
 METHOD SetFocus( cId ) CLASS WebProtocol
-   RETURN( ::Write( { "focus" => { "id" => cId } } ) )
+   RETURN ::Write( { "focus" => { "id" => cId } } )
+
 METHOD SetSelection( cId, nStart, nEnd ) CLASS WebProtocol
-   RETURN( ::Write( { "select" => { "id" => cId, "start" => nStart, "end" => nEnd } } ) )
+   RETURN ::Write( { "select" => { "id" => cId, "start" => nStart, "end" => nEnd } } )
+
 METHOD InsertHTML( cId, cHtml ) CLASS WebProtocol
-   RETURN( ::Write( { "insert" => { "id" => cId, "html" => cHtml } } ) )
+   RETURN ::Write( { "insert" => { "id" => cId, "html" => cHtml } } )
+
 METHOD Set( cSearch, cName, cValue ) CLASS WebProtocol
-   RETURN( ::Write( { "set" => { "search" => cSearch, "nev" => cName, "ertek" => cValue } } ) )
+   RETURN ::Write( { "set" => { "search" => cSearch, "nev" => cName, "ertek" => cValue } } )
+
 METHOD SetStyle( cSearch, cName, cValue ) CLASS WebProtocol
-   RETURN( ::Write( { "setstyle" => { "search" => cSearch, "nev" => cName, "ertek" => cValue } } ) )
+   RETURN ::Write( { "setstyle" => { "search" => cSearch, "nev" => cName, "ertek" => cValue } } )
+
 METHOD Inkeyon( cId ) CLASS WebProtocol
 
    LOCAL rc
 
-   IF ( cId == NIL )
+   IF cId == NIL
       rc := { "inkey" => { "mode" => "windowadd" } }
    ELSE
       rc := { "inkey" => { "mode" => "idadd", "id" => cId } }
    ENDIF
 
-   RETURN( ::Write( rc ) )
+   RETURN ::Write( rc )
+
 METHOD Inkeyoff( cId ) CLASS WebProtocol
 
    LOCAL rc
 
-   IF ( cId == NIL )
+   IF cId == NIL
       rc := { "inkey" => { "mode" => "windowremove" } }
    ELSE
       rc := { "inkey" => { "mode" => "idremove", "id" => cId } }
    ENDIF
 
-   RETURN( ::Write( rc ) )
+   RETURN ::Write( rc )
+
 METHOD Redirect( cLink ) CLASS WebProtocol
-   RETURN( ::Write( { "href" => cLink } ) )
+   RETURN ::Write( { "href" => cLink } )
+
 METHOD GetFields( nTimeout ) CLASS WebProtocol
 
-   LOCAL rc
-   LOCAL cValasz
-   LOCAL nReadstatus
+   LOCAL cValasz := ""
+   LOCAL nReadstatus := ::ReadBlock( @cValasz, hb_defaultValue( nTimeout, 0 ) )
 
-   cValasz := ""
-   hb_default( @nTimeout, 0 )
-   nReadstatus := ::ReadBlock( @cValasz, nTimeout )
    DO CASE
    CASE nReadstatus > 0
-      hb_jsonDecode( cValasz, @rc )
-      IF ValType( rc ) # "H"
-         rc := hb_Hash()
-      ENDIF
+      RETURN hb_defaultValue( hb_jsonDecode( cValasz ), { => } )
    CASE nReadstatus == 0
-      // Timeout
-      rc := hb_Hash()
-   OTHERWISE
-      // Hiba
+      RETURN { => }  // Timeout
    ENDCASE
 
-   RETURN( rc )
+   RETURN NIL  // Error
+
 METHOD isCommand() CLASS WebProtocol
-   RETURN( hb_HHasKey( ::Respond, "command" ) )
+   RETURN "command" $ ::Respond
+
 METHOD Command() CLASS WebProtocol
 
-   if ::isCommand()
-      RETURN( hb_HGetDef( ::Respond[ "command" ], "comm", "" ) )
+   IF ::isCommand()
+      RETURN hb_HGetDef( ::Respond[ "command" ], "comm", "" )
    ENDIF
 
-   RETURN( "" )
+   RETURN ""
+
 METHOD Parameter() CLASS WebProtocol
 
-   if ::isCommand()
-      RETURN( hb_HGetDef( ::Respond[ "command" ], "par", "" ) )
+   IF ::isCommand()
+      RETURN hb_HGetDef( ::Respond[ "command" ], "par", "" )
    ENDIF
 
-   RETURN( "" )
-METHOD isFiles()  CLASS WebProtocol
+   RETURN ""
 
-   hb_HHasKey( ::Respond, "fileok" )
+METHOD isFiles() CLASS WebProtocol
+   RETURN "fileok" $ ::Respond
 
-   RETURN( hb_HHasKey( ::Respond, "fileok" ) )
-METHOD Files()  CLASS WebProtocol
+METHOD Files() CLASS WebProtocol
+   RETURN iif( ::isFiles(), ::Respond[ "fileok" ], {} )
 
-   if ::isFiles()
-      RETURN( ::Respond[ "fileok" ] )
-   ENDIF
+METHOD isFields() CLASS WebProtocol
+   RETURN ;
+      "mezok" $ ::Respond .AND. ;
+      Len( ::Respond[ "mezok" ] ) > 0
 
-   RETURN( {} )
-METHOD isFields()  CLASS WebProtocol
+METHOD Fields() CLASS WebProtocol
+   RETURN iif( ::isFields(), ::Respond[ "mezok" ], { => } )
 
-   LOCAL rc := .n.
+METHOD isField( cName ) CLASS WebProtocol
+   RETURN ::isFields() .AND. cName $ ::Respond[ "mezok" ]
 
-   IF hb_HHasKey( ::Respond, "mezok" )
-      IF Len( ::Respond[ "mezok" ] ) > 0
-         rc := .y.
-      ENDIF
-   ENDIF
+METHOD FieldGet( cName, /* @ */ xVar, xDefault ) CLASS WebProtocol
 
-   RETURN( rc )
-METHOD Fields()  CLASS WebProtocol
+   LOCAL xWork
 
-   if ::isFields()
-      RETURN( ::Respond[ "mezok" ] )
-   ENDIF
-
-   RETURN( { => } )
-METHOD isField( cName )  CLASS WebProtocol
-
-   LOCAL rc := .n.
-
-   if ::isFields()
-      IF hb_HHasKey( ::Respond[ "mezok" ], cName )
-         rc := .y.
-      ENDIF
-   ENDIF
-
-   RETURN( rc )
-METHOD FieldGet( cName, xVar, xDefault )  CLASS WebProtocol
-
-   LOCAL rc := .n., xWork
-
-   if ::isField( cName )
+   IF ::isField( cName )
       xWork := ::Respond[ "mezok" ][ cName ]
-      switch ValType( xVar )
+      SWITCH ValType( xVar )
       CASE "N"
          xVar := Val( xWork )
          EXIT
@@ -540,11 +519,9 @@ METHOD FieldGet( cName, xVar, xDefault )  CLASS WebProtocol
       OTHERWISE
          xVar := xWork
          EXIT
-      endswitch
-   ELSE
-      IF xDefault # NIL
-         xVar := xDefault
-      ENDIF
+      ENDSWITCH
+   ELSEIF xDefault != NIL
+      xVar := xDefault
    ENDIF
 
-   RETURN( rc )
+   RETURN .F.
